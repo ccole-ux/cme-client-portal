@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { toast } from "sonner";
 import {
   GanttChart,
+  type GanttImperativeHandle,
   type GanttTaskInput,
   type GanttViewMode,
   type UserMode,
@@ -29,6 +30,11 @@ export function GanttView({
   const router = useRouter();
   const search = useSearchParams();
   const [, startTransition] = useTransition();
+  const ganttRef = useRef<GanttImperativeHandle>(null);
+
+  function jumpToStart() {
+    ganttRef.current?.jumpTo(projectStart);
+  }
 
   function handleClick(taskId: string) {
     const next = new URLSearchParams(search.toString());
@@ -106,13 +112,28 @@ export function GanttView({
   }
 
   return (
-    <GanttChart
-      tasks={tasks}
-      mode={mode}
-      onTaskClick={handleClick}
-      onTaskDrag={handleDrag}
-      viewMode={viewMode}
-      projectStart={projectStart}
-    />
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={jumpToStart}
+          className="rounded-md border px-2.5 py-1 hover:bg-muted"
+        >
+          Jump to project start
+        </button>
+        <span className="text-muted-foreground">
+          Starts {projectStart}. Drag bars to reschedule; click for detail.
+        </span>
+      </div>
+      <GanttChart
+        tasks={tasks}
+        mode={mode}
+        onTaskClick={handleClick}
+        onTaskDrag={handleDrag}
+        viewMode={viewMode}
+        projectStart={projectStart}
+        imperativeRef={ganttRef}
+      />
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Card,
   CardDescription,
@@ -9,8 +10,11 @@ import {
   getTasksWithCosts,
 } from "@/lib/projects/queries";
 import { loadGanttData } from "@/lib/projects/gantt";
-import { getCurrentProfile } from "@/lib/supabase/dal";
+import { getCurrentProfile, getSessionUser } from "@/lib/supabase/dal";
 import { formatDate } from "@/lib/status";
+import {
+  countDraftsForUser,
+} from "@/lib/drafts/queries";
 import {
   loadPendingLocksForProject,
   lockedFieldKeySet,
@@ -45,11 +49,13 @@ export default async function GanttPage({
   const sp = await searchParams;
   const project = await getProjectBySlugOrNotFound(slug);
   const profile = await getCurrentProfile();
+  const user = await getSessionUser();
   const supabase = await createClient();
-  const [gantt, tasksWithCosts, taskLocks] = await Promise.all([
+  const [gantt, tasksWithCosts, taskLocks, draftsCount] = await Promise.all([
     loadGanttData(project.id),
     getTasksWithCosts(project.id),
     loadPendingLocksForProject(supabase, project.id, "workplan_task"),
+    user ? countDraftsForUser(project.id, user.id) : Promise.resolve(0),
   ]);
   const lockedKeys = lockedFieldKeySet(taskLocks);
 
@@ -192,6 +198,16 @@ export default async function GanttPage({
             {formatDate(gantt.projectEnd.toISOString())} ·{" "}
             {criticalCount} tasks on critical path
           </div>
+          <Link
+            href={`/p/${slug}/drafts`}
+            className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-muted"
+            title="Your pending drafts on this project"
+          >
+            Drafts
+            <span className="inline-flex items-center justify-center rounded-full bg-cme-yellow/80 text-cme-black px-1.5 py-px text-[10px] font-semibold min-w-[1.25rem]">
+              {draftsCount}
+            </span>
+          </Link>
           <DownloadMenu slug={slug} scope="canonical" />
         </div>
       </div>

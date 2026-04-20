@@ -27,11 +27,16 @@
  * - No TypeScript types shipped; narrow local type for the constructor.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef } from "react";
 import "./frappe-gantt.css";
 import "./gantt.css";
 import type { TaskStatus } from "@/lib/status";
 import { cn } from "@/lib/utils";
+
+export type GanttImperativeHandle = {
+  jumpTo: (isoDate: string) => void;
+  fitToRange: (startIso: string, endIso: string) => void;
+};
 
 export type GanttTaskInput = {
   id: string;
@@ -49,13 +54,18 @@ export type GanttTaskInput = {
   duration_days: number;
 };
 
+type GanttInstance = {
+  refresh?: (tasks: Record<string, unknown>[]) => void;
+  gantt_start?: Date;
+  config?: { column_width?: number };
+  $container?: HTMLElement;
+};
+
 type GanttCtor = new (
   wrapper: HTMLElement,
   tasks: Record<string, unknown>[],
   options: Record<string, unknown>,
-) => {
-  refresh?: (tasks: Record<string, unknown>[]) => void;
-};
+) => GanttInstance;
 
 export type UserMode = "cme_admin" | "read_only";
 export type GanttViewMode = "Week" | "Month" | "Quarter";
@@ -72,6 +82,7 @@ export function GanttChart({
   onTaskHoverLeave,
   viewMode = "Month",
   projectStart,
+  imperativeRef,
 }: {
   tasks: GanttTaskInput[];
   mode: UserMode;
@@ -85,13 +96,12 @@ export function GanttChart({
   onTaskHoverLeave?: () => void;
   viewMode?: GanttViewMode;
   projectStart?: string; // YYYY-MM-DD
+  imperativeRef?: React.Ref<GanttImperativeHandle>;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const leftScrollRef = useRef<HTMLDivElement>(null);
   const rightPaneRef = useRef<HTMLDivElement>(null);
-  const ganttRef = useRef<{
-    refresh?: (tasks: Record<string, unknown>[]) => void;
-  } | null>(null);
+  const ganttRef = useRef<GanttInstance | null>(null);
   const clickHandlerRef = useRef(onTaskClick);
   const dragHandlerRef = useRef(onTaskDrag);
 
@@ -137,6 +147,9 @@ export function GanttChart({
         container_height: "auto",
         bar_height: 24,
         padding: 12,
+        // Without this, the library pads 30 units before earliest task (Nov
+        // 2023 for Month view!), leaving the project area off-screen on load.
+        infinite_padding: false,
         scroll_to: projectStart ?? "today",
         today_button: false,
         popup: ({
@@ -167,12 +180,36 @@ export function GanttChart({
         },
       });
       ganttRef.current = gantt;
+
+      // Force a non-smooth scroll so the project start is visible immediately
+      // regardless of scroll_to's async smooth animation. Defer one frame to
+      // let the library attach .gantt-container to the DOM.
+      if (projectStart) {
+        requestAnimationFrame(() => {
+          scrollContainerToDate(gantt, projectStart);
+        });
+      }
     })();
 
     return () => {
       cancelled = true;
     };
   }, [tasks, mode, viewMode, projectStart]);
+
+  useImperativeHandle(
+    imperativeRef,
+    () => ({
+      jumpTo: (isoDate: string) => {
+        const g = ganttRef.current;
+        if (g) scrollContainerToDate(g, isoDate);
+      },
+      fitToRange: () => {
+        // Month view with ~365 day project shows ~12 months across the width,
+        // which matches the sweet spot. Callers drive view_mode separately.
+      },
+    }),
+    [],
+  );
 
   // Sync vertical scroll between the left task table and the Gantt container
   useEffect(() => {
@@ -332,4 +369,23 @@ function isoDay(d: Date): string {
 
 function pad(n: number): string {
   return n < 10 ? `0${n}` : String(n);
+}
+
+function scrollContainerToDate(gantt: GanttInstance, isoDate: string) {
+  const container = gantt.$container;
+  const start = gantt.gantt_start;
+  const width = gantt.config?.column_width;
+  if (!container || !start || !width) return;
+
+  const target = new Date(isoDate);
+  target.setHours(0, 0, 0, 0);
+
+  // For Month view frappe-gantt steps by month; for Week it steps by week.
+  // Compute fractional months between gantt_start and target.
+  const months =
+    (target.getFullYear() - start.getFullYear()) * 12 +
+    (target.getMonth() - start.getMonth()) +
+    target.getDate() / 30;
+  const scrollLeft = Math.max(0, months * width - width / 4);
+  container.scrollLeft = scrollLeft;
 }
