@@ -2,15 +2,26 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
+import { cn } from "@/lib/utils";
 
 const PHASES = ["1", "1.5", "2", "3", "PM"];
+const VIEW_MODES: { value: "Week" | "Month" | "Quarter"; label: string }[] = [
+  { value: "Week", label: "Week" },
+  { value: "Month", label: "Month" },
+  { value: "Quarter", label: "Quarter" },
+];
 
 export function GanttFilterBar({
   slug,
   initial,
 }: {
   slug: string;
-  initial: { phase: string; milestones: boolean; critical: boolean };
+  initial: {
+    phase: string;
+    milestones: boolean;
+    critical: boolean;
+    view: "Week" | "Month" | "Quarter";
+  };
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -22,8 +33,7 @@ export function GanttFilterBar({
       if (v == null || v === "all" || v === "" || v === "0") next.delete(k);
       else next.set(k, v);
     }
-    // Drop `task` from the URL on filter change so the drawer closes
-    next.delete("task");
+    next.delete("task"); // close drawer on filter change
     startTransition(() => {
       router.push(`/p/${slug}/gantt${next.size ? `?${next}` : ""}`);
     });
@@ -68,6 +78,28 @@ export function GanttFilterBar({
         />
         Critical path only
       </label>
+      <div className="ml-auto flex items-center gap-1 rounded-md border p-0.5">
+        <span className="px-2 text-[11px] tracking-widest uppercase text-muted-foreground">
+          Zoom
+        </span>
+        {VIEW_MODES.map((v) => (
+          <button
+            key={v.value}
+            type="button"
+            onClick={() =>
+              update({ view: v.value === "Month" ? null : v.value })
+            }
+            className={cn(
+              "px-2 py-1 text-xs rounded-sm",
+              initial.view === v.value
+                ? "bg-cme-dark-green text-white"
+                : "hover:bg-muted",
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

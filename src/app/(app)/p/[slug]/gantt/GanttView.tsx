@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   GanttChart,
   type GanttTaskInput,
+  type GanttViewMode,
   type UserMode,
 } from "@/components/gantt/GanttChart";
 
@@ -13,10 +14,14 @@ export function GanttView({
   tasks,
   mode,
   slug,
+  viewMode,
+  projectStart,
 }: {
   tasks: GanttTaskInput[];
   mode: UserMode;
   slug: string;
+  viewMode: GanttViewMode;
+  projectStart: string;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -89,7 +94,8 @@ export function GanttView({
       mode={mode}
       onTaskClick={handleClick}
       onTaskDrag={handleDrag}
-      viewMode="Week"
+      viewMode={viewMode}
+      projectStart={projectStart}
     />
   );
 }

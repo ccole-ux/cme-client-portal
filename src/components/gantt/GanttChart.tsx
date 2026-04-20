@@ -13,19 +13,25 @@
  *   highlight via CSS variable, CSS hooks for per-task `custom_class` (used
  *   below for critical-path red + phase-tinted bars), MIT license.
  *
+ * Layout wrap (Session 4 polish):
+ * - Left pane: sticky 450px task table with WBS, name, phase, resource,
+ *   duration. Own vertical scroll, synced with the Gantt via a single scroll
+ *   handler so row N in the table aligns with bar N on the timeline.
+ * - Right pane: frappe-gantt with horizontal scroll for the timeline, its
+ *   internal scroll-container owning vertical scroll. CSS override on
+ *   `.grid-header` drops the +10px padding so both panes' header heights
+ *   (75px) + row heights (36px) match exactly.
+ *
  * Trade-offs accepted:
- * - No native swim-lane rendering; we approximate with phase-tinted bars and
- *   a sort-by-phase ordering (Chris flagged full swim lanes as a polish item).
- * - Library is a vanilla JS class, not a React component — we wrap with
- *   useRef/useEffect and rebuild the chart when inputs change.
- * - No TypeScript types shipped; we use a narrow local type for the
- *   constructor so the rest of the app stays type-safe.
+ * - Library is vanilla JS; wrapped with useRef/useEffect.
+ * - No TypeScript types shipped; narrow local type for the constructor.
  */
 
 import { useEffect, useRef } from "react";
 import "./frappe-gantt.css";
 import "./gantt.css";
 import type { TaskStatus } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 export type GanttTaskInput = {
   id: string;
@@ -39,6 +45,8 @@ export type GanttTaskInput = {
   is_critical: boolean;
   status: TaskStatus;
   dependencies: string[]; // predecessor ids
+  resources: { name: string; firm: string }[];
+  duration_days: number;
 };
 
 type GanttCtor = new (
@@ -50,13 +58,20 @@ type GanttCtor = new (
 };
 
 export type UserMode = "cme_admin" | "read_only";
+export type GanttViewMode = "Week" | "Month" | "Quarter";
+
+const HEADER_HEIGHT = 75; // matches grid-header CSS override in gantt.css
+const ROW_HEIGHT = 36; // bar_height (24) + padding (12) — see frappe-gantt defaults
 
 export function GanttChart({
   tasks,
   mode,
   onTaskClick,
   onTaskDrag,
-  viewMode = "Week",
+  onTaskHoverEnter,
+  onTaskHoverLeave,
+  viewMode = "Month",
+  projectStart,
 }: {
   tasks: GanttTaskInput[];
   mode: UserMode;
@@ -66,22 +81,26 @@ export function GanttChart({
     newStart: string,
     newFinish: string,
   ) => void;
-  viewMode?: "Day" | "Week" | "Month" | "Quarter" | "Year";
+  onTaskHoverEnter?: (taskId: string) => void;
+  onTaskHoverLeave?: () => void;
+  viewMode?: GanttViewMode;
+  projectStart?: string; // YYYY-MM-DD
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const leftScrollRef = useRef<HTMLDivElement>(null);
+  const rightPaneRef = useRef<HTMLDivElement>(null);
   const ganttRef = useRef<{
     refresh?: (tasks: Record<string, unknown>[]) => void;
   } | null>(null);
   const clickHandlerRef = useRef(onTaskClick);
   const dragHandlerRef = useRef(onTaskDrag);
 
-  // Keep refs in sync so the frappe-gantt instance (which captures these on
-  // mount) always calls the latest handler even if the parent re-renders.
   useEffect(() => {
     clickHandlerRef.current = onTaskClick;
     dragHandlerRef.current = onTaskDrag;
   });
 
+  // Build the frappe-gantt chart
   useEffect(() => {
     if (!containerRef.current) return;
     let cancelled = false;
@@ -108,8 +127,6 @@ export function GanttChart({
       };
       if (cancelled || !containerRef.current) return;
 
-      // Clear any prior render (strict-mode double-invoke in dev, view_mode
-      // changes, etc.)
       containerRef.current.innerHTML = "";
 
       const Gantt = mod.default;
@@ -120,24 +137,21 @@ export function GanttChart({
         container_height: "auto",
         bar_height: 24,
         padding: 12,
-        scroll_to: "today",
+        scroll_to: projectStart ?? "today",
         today_button: false,
         popup: ({
           task,
           set_title,
           set_details,
-          chart,
         }: {
           task: { name: string; start: Date; end: Date };
           set_title: (html: string) => void;
           set_details: (html: string) => void;
-          chart: { close_popup: () => void };
         }) => {
           set_title(task.name);
           set_details(
             `${formatDate(task.start)} → ${formatDate(task.end)}`,
           );
-          void chart;
         },
         on_click: (task: { id: string }) => {
           clickHandlerRef.current(task.id);
@@ -149,11 +163,7 @@ export function GanttChart({
         ) => {
           const handler = dragHandlerRef.current;
           if (!handler) return;
-          handler(
-            task.id,
-            isoDay(start),
-            isoDay(end),
-          );
+          handler(task.id, isoDay(start), isoDay(end));
         },
       });
       ganttRef.current = gantt;
@@ -162,11 +172,139 @@ export function GanttChart({
     return () => {
       cancelled = true;
     };
-    // Re-init on any task list change. Drag and click handlers are captured
-    // via refs so they don't force remounts.
-  }, [tasks, mode, viewMode]);
+  }, [tasks, mode, viewMode, projectStart]);
 
-  return <div ref={containerRef} className="cme-gantt" />;
+  // Sync vertical scroll between the left task table and the Gantt container
+  useEffect(() => {
+    const left = leftScrollRef.current;
+    const right = rightPaneRef.current?.querySelector<HTMLElement>(
+      ".gantt-container",
+    );
+    if (!left || !right) return;
+
+    let locked: "left" | "right" | null = null;
+    const unlock = () => {
+      locked = null;
+    };
+
+    const onLeft = () => {
+      if (locked === "right") return;
+      locked = "left";
+      right.scrollTop = left.scrollTop;
+      requestAnimationFrame(unlock);
+    };
+    const onRight = () => {
+      if (locked === "left") return;
+      locked = "right";
+      left.scrollTop = right.scrollTop;
+      requestAnimationFrame(unlock);
+    };
+
+    left.addEventListener("scroll", onLeft, { passive: true });
+    right.addEventListener("scroll", onRight, { passive: true });
+    return () => {
+      left.removeEventListener("scroll", onLeft);
+      right.removeEventListener("scroll", onRight);
+    };
+    // Re-run when tasks change — frappe-gantt rebuilds and the
+    // .gantt-container element may be swapped under us.
+  }, [tasks, viewMode]);
+
+  return (
+    <div className="cme-gantt-layout">
+      <div
+        className="cme-gantt-left"
+        ref={leftScrollRef}
+        style={{ width: 450 }}
+      >
+        <div
+          className="cme-gantt-left-header"
+          style={{ height: HEADER_HEIGHT }}
+        >
+          <div className="grid grid-cols-[1fr_auto] items-end h-full px-3 pb-2 border-b text-[11px] tracking-widest uppercase text-muted-foreground">
+            <div>Task</div>
+            <div className="text-right">Duration</div>
+          </div>
+        </div>
+        <ul className="divide-y">
+          {tasks.map((t) => (
+            <li
+              key={t.id}
+              style={{ height: ROW_HEIGHT }}
+              className={cn(
+                "px-3 flex items-center text-xs",
+                t.is_critical && "bg-cme-red/5",
+                t.is_milestone && "bg-muted/40",
+              )}
+              onMouseEnter={() => onTaskHoverEnter?.(t.id)}
+              onMouseLeave={() => onTaskHoverLeave?.()}
+              title={`${t.wbs} · ${t.name}`}
+            >
+              <div className="flex-1 min-w-0 grid grid-cols-[48px_minmax(0,1fr)_auto] gap-2 items-center">
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {t.wbs}
+                </span>
+                <span className="truncate font-medium">
+                  {t.is_milestone && (
+                    <span className="mr-1 text-cme-dark-green">◆</span>
+                  )}
+                  {truncate(t.name, 50)}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  {t.phase && (
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+                      P{t.phase}
+                    </span>
+                  )}
+                  <ResourceSummary resources={t.resources} />
+                </span>
+              </div>
+              <div
+                className={cn(
+                  "tabular-nums text-right ml-2 text-[11px]",
+                  t.is_critical && "text-cme-red font-semibold",
+                )}
+              >
+                {t.is_milestone ? "—" : `${t.duration_days}d`}
+              </div>
+            </li>
+          ))}
+          {tasks.length === 0 && (
+            <li className="p-6 text-center text-xs text-muted-foreground">
+              No tasks match the current filters.
+            </li>
+          )}
+        </ul>
+      </div>
+      <div className="cme-gantt-right" ref={rightPaneRef}>
+        <div ref={containerRef} className="cme-gantt" />
+      </div>
+    </div>
+  );
+}
+
+function ResourceSummary({
+  resources,
+}: {
+  resources: { name: string; firm: string }[];
+}) {
+  if (!resources || resources.length === 0) {
+    return (
+      <span className="text-[10px] text-muted-foreground italic">—</span>
+    );
+  }
+  if (resources.length === 1) {
+    const last = resources[0].name.split(/\s+/).slice(-1)[0];
+    return <span className="text-[10px] text-muted-foreground">{last}</span>;
+  }
+  return (
+    <span
+      className="text-[10px] text-muted-foreground"
+      title={resources.map((r) => r.name).join(", ")}
+    >
+      {resources.length} resources
+    </span>
+  );
 }
 
 function phaseClass(phase: string | null): string {
@@ -174,6 +312,10 @@ function phaseClass(phase: string | null): string {
   if (phase === "1.5") return "phase-1-5";
   if (phase === "PM") return "phase-pm";
   return `phase-${phase}`;
+}
+
+function truncate(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max - 1) + "…" : s;
 }
 
 function formatDate(d: Date): string {

@@ -2,13 +2,64 @@
  * Loaded after the library stylesheet so these rules win.
  */
 
+/* Two-column layout wrapper (sticky task table + Gantt timeline). */
+.cme-gantt-layout {
+  display: flex;
+  max-height: 75vh;
+  min-height: 500px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+}
+
+.cme-gantt-left {
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--border);
+}
+
+.cme-gantt-left-header {
+  position: sticky;
+  top: 0;
+  background: var(--background);
+  z-index: 10;
+}
+
+.cme-gantt-right {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Constrain the library's gantt-container so its own overflow handles both
+ * vertical (tasks > viewport) AND horizontal (timeline > viewport) scroll
+ * inside the right pane. Without !important the library's inline
+ * `height: <grid_height>px` wins over our stylesheet. */
+.cme-gantt-right .gantt-container {
+  height: 100% !important;
+  max-height: 100%;
+  width: 100%;
+}
+
+/* Drop the +10px padding from frappe-gantt's grid-header so left and right
+ * panes stay perfectly aligned. With this override both headers are 75px
+ * tall and data rows start at the same Y. */
+.cme-gantt-right .gantt-container .grid-header {
+  height: calc(
+    var(--gv-lower-header-height) + var(--gv-upper-header-height)
+  ) !important;
+}
+
 .cme-gantt {
   /* frappe-gantt CSS variables */
   --g-bg-color: #ffffff;
   --g-border-color: rgba(36, 83, 46, 0.12);
   --g-row-color-alt: rgba(60, 157, 72, 0.04);
   --g-weekend-highlight-color: rgba(199, 200, 202, 0.25);
-  --g-today-highlight: rgba(255, 203, 14, 0.6);
+  --g-today-highlight: #FFCB0E;
   --g-tick-color: rgba(36, 83, 46, 0.08);
 
   /* Task bar base fill — CME bright green */
@@ -31,7 +82,7 @@
   fill: rgba(255, 255, 255, 0.15) !important;
 }
 
-/* Milestone diamonds — CME dark green outline with yellow fill on critical */
+/* Milestone diamonds — CME dark green, red if critical */
 .cme-gantt .bar-wrapper[data-is-milestone="true"] .bar {
   fill: #25532E;
 }
@@ -56,16 +107,9 @@
   fill: #E85F46 !important;
 }
 
-/* Upper/lower header */
+/* Upper/lower header text color */
 .cme-gantt .upper-text,
 .cme-gantt .lower-text {
   fill: #25532E;
   font-weight: 500;
 }
-
-/* Subtle row stripes by phase (applied via data attribute on the row grid) */
-.cme-gantt .grid-row[data-phase="1"] { fill: rgba(60, 157, 72, 0.03); }
-.cme-gantt .grid-row[data-phase="1-5"] { fill: rgba(79, 182, 91, 0.04); }
-.cme-gantt .grid-row[data-phase="2"] { fill: rgba(75, 95, 158, 0.04); }
-.cme-gantt .grid-row[data-phase="3"] { fill: rgba(158, 59, 88, 0.04); }
-.cme-gantt .grid-row[data-phase="PM"] { fill: rgba(82, 54, 28, 0.04); }

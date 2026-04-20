@@ -19,6 +19,7 @@ const CME_ADMIN_EMAIL = "ccole@cole-mgtandeng.com";
 // Chain of dependencies from the session 4 kickoff, expressed as
 // [predecessor_wbs, successor_wbs].
 const EDGES: [string, string][] = [
+  // Original Session 4 baseline
   ["1.0.3", "1.1.1"],
   ["1.0.3", "1.11.1"],
   ["1.1.1", "1.2.1"],
@@ -36,6 +37,21 @@ const EDGES: [string, string][] = [
   ["1.5A.3", "M6"],
   ["M7", "3.1"],
   ["3.5", "M8"],
+  // Session 4 polish — complete the build chain so the critical path
+  // traces the real scope sequence, not PM oversight.
+  ["1.2.1", "1.3.1"],
+  ["1.3.1", "1.4.1"],
+  ["1.4.1", "1.5.5"],
+  ["1.5.5", "1.5.7"],
+  ["1.5.7", "1.10.2"],
+  ["1.6.2", "M3"],
+  ["1.5.7", "M3"],
+  ["1.10.3", "M5"],
+  // (M5 → 1.5A.1 and 1.5A.3 → M6 already seeded above)
+  ["M6", "2.1"],
+  ["2.11", "M7"],
+  // (M7 → 3.1 already seeded above)
+  ["3.9", "M8"],
 ];
 
 async function main() {

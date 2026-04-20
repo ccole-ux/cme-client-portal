@@ -1,6 +1,5 @@
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -16,7 +15,10 @@ import { GanttView } from "./GanttView";
 import { GanttFilterBar } from "./GanttFilterBar";
 import { MobileTaskList } from "./MobileTaskList";
 import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
-import type { GanttTaskInput } from "@/components/gantt/GanttChart";
+import type {
+  GanttTaskInput,
+  GanttViewMode,
+} from "@/components/gantt/GanttChart";
 
 export const metadata = { title: "Gantt — CME Client Portal" };
 
@@ -30,6 +32,7 @@ export default async function GanttPage({
     phase?: string;
     milestones?: string;
     critical?: string;
+    view?: string;
   }>;
 }) {
   const { slug } = await params;
@@ -57,6 +60,25 @@ export default async function GanttPage({
   const selectedPhase = sp.phase ?? "all";
   const milestonesOnly = sp.milestones === "1";
   const criticalOnly = sp.critical === "1";
+  const viewMode: GanttViewMode =
+    sp.view === "Week" || sp.view === "Quarter" ? sp.view : "Month";
+
+  // Index resources + hours per task from the tasksWithCosts helper.
+  const resourcesByTask = new Map<
+    string,
+    { name: string; firm: string }[]
+  >();
+  for (const tc of tasksWithCosts) {
+    resourcesByTask.set(
+      tc.task.id,
+      tc.assignments
+        .map((a) => ({
+          name: a.resource?.full_name ?? "Unknown",
+          firm: a.resource?.firm ?? "",
+        }))
+        .filter((r) => r.name !== "Unknown"),
+    );
+  }
 
   const visible = gantt.tasks.filter((t) => {
     if (!t.start_date || !t.finish_date) return false;
@@ -84,19 +106,32 @@ export default async function GanttPage({
     return (a.start_date ?? "").localeCompare(b.start_date ?? "");
   });
 
-  const ganttInput: GanttTaskInput[] = visible.map((t) => ({
-    id: t.id,
-    wbs: t.wbs,
-    name: t.task_name,
-    start: t.start_date!,
-    end: t.finish_date!,
-    progress: 0,
-    phase: t.phase,
-    is_milestone: t.is_milestone,
-    is_critical: gantt.analysis.get(t.id)?.is_on_critical_path ?? false,
-    status: t.status,
-    dependencies: depsBySuccessor.get(t.id) ?? [],
-  }));
+  const ganttInput: GanttTaskInput[] = visible.map((t) => {
+    const start = t.start_date!;
+    const finish = t.finish_date!;
+    const duration = Math.max(
+      1,
+      Math.round(
+        (new Date(finish).getTime() - new Date(start).getTime()) /
+          86_400_000,
+      ) + 1,
+    );
+    return {
+      id: t.id,
+      wbs: t.wbs,
+      name: t.task_name,
+      start,
+      end: finish,
+      progress: 0,
+      phase: t.phase,
+      is_milestone: t.is_milestone,
+      is_critical: gantt.analysis.get(t.id)?.is_on_critical_path ?? false,
+      status: t.status,
+      dependencies: depsBySuccessor.get(t.id) ?? [],
+      resources: resourcesByTask.get(t.id) ?? [],
+      duration_days: t.is_milestone ? 0 : duration,
+    };
+  });
 
   const criticalCount = [...gantt.analysis.values()].filter(
     (a) => a.is_on_critical_path,
@@ -149,19 +184,32 @@ export default async function GanttPage({
         </div>
       </div>
 
-      <GanttFilterBar slug={slug} initial={{ phase: selectedPhase, milestones: milestonesOnly, critical: criticalOnly }} />
+      <GanttFilterBar
+        slug={slug}
+        initial={{
+          phase: selectedPhase,
+          milestones: milestonesOnly,
+          critical: criticalOnly,
+          view: viewMode,
+        }}
+      />
 
       <Legend />
 
-      <Card>
-        <CardContent className="p-0 hidden md:block">
-          <GanttView tasks={ganttInput} mode={mode} slug={slug} />
-        </CardContent>
-        <div className="md:hidden">
-          <MobileTaskList
-            tasks={ganttInput}
-            slug={slug}
-          />
+      <div className="hidden md:block">
+        <GanttView
+          tasks={ganttInput}
+          mode={mode}
+          slug={slug}
+          viewMode={viewMode}
+          projectStart={gantt.projectStart
+            .toISOString()
+            .slice(0, 10)}
+        />
+      </div>
+      <Card className="md:hidden">
+        <div>
+          <MobileTaskList tasks={ganttInput} slug={slug} />
         </div>
       </Card>
 
