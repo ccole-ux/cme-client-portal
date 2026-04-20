@@ -46,4 +46,6 @@ npx supabase gen types typescript --project-id qodxdzgormqtbqiakhxn > src/lib/su
 | `migrations/009_triggers.sql`                | updated_at, audit, snapshot versioning |
 | `migrations/010_deliverables_metadata.sql`   | deliverables owner/freq/phase/delivery |
 | `migrations/011_task_dependencies.sql`       | task_dependencies (Gantt + critical path) |
-| `apply-all.sql`                              | Concatenated 001–011 for dashboard use |
+| `migrations/012_submission_snapshot_function.sql` | capture_submission_snapshot fn     |
+| `migrations/013_accepted_version_snapshot_function.sql` | capture_accepted_version_snapshot + capture_manual_snapshot fns |
+| `apply-all.sql`                              | Concatenated 001–013 for dashboard use |

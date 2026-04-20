@@ -935,3 +935,314 @@ CREATE TRIGGER trg_task_deps_audit
   AFTER INSERT OR UPDATE OR DELETE ON task_dependencies
   FOR EACH ROW EXECUTE FUNCTION audit_log_trigger();
 
+
+-- ==============================================================
+-- 012_submission_snapshot_function.sql
+-- ==============================================================
+-- 012: Postgres function that captures a workplan_snapshot row of type
+-- 'submission' when a new change_submissions row is created. Called from the
+-- submit-for-review API endpoint inside the same transaction that inserts
+-- the submission and flips the drafts to 'submitted'.
+
+CREATE OR REPLACE FUNCTION capture_submission_snapshot(p_submission_id uuid)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_project_id   uuid;
+  v_submitter_id uuid;
+  v_snapshot_id  uuid;
+  v_label        text;
+  v_workplan     jsonb;
+  v_narrative    jsonb;
+BEGIN
+  SELECT cs.project_id, cs.submitter_id
+    INTO v_project_id, v_submitter_id
+  FROM change_submissions cs
+  WHERE cs.id = p_submission_id;
+
+  IF v_project_id IS NULL THEN
+    RAISE EXCEPTION 'change_submission % not found', p_submission_id;
+  END IF;
+
+  SELECT jsonb_build_object(
+    'tasks',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(t))
+          FROM workplan_tasks t
+         WHERE t.project_id = v_project_id
+      ), '[]'::jsonb),
+    'task_resources',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(r))
+          FROM workplan_task_resources r
+          JOIN workplan_tasks t ON t.id = r.task_id
+         WHERE t.project_id = v_project_id
+      ), '[]'::jsonb),
+    'dependencies',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(d))
+          FROM task_dependencies d
+         WHERE d.project_id = v_project_id
+      ), '[]'::jsonb),
+    'deliverables',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(dv))
+          FROM deliverables dv
+         WHERE dv.project_id = v_project_id
+      ), '[]'::jsonb),
+    'pending_changes',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(pc))
+          FROM proposed_changes pc
+         WHERE pc.submission_id = p_submission_id
+      ), '[]'::jsonb)
+  ) INTO v_workplan;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(ns)), '[]'::jsonb)
+    INTO v_narrative
+  FROM narrative_sections ns
+  WHERE ns.project_id = v_project_id;
+
+  SELECT 'Submission by ' || COALESCE(u.full_name, u.email) ||
+         ' · ' || to_char(now() AT TIME ZONE 'UTC', 'Mon DD, YYYY')
+    INTO v_label
+  FROM users u
+  WHERE u.id = v_submitter_id;
+
+  INSERT INTO workplan_snapshots (
+    project_id, snapshot_type, snapshot_label, version_number,
+    captured_by, submission_id, data, narrative_data, notes
+  ) VALUES (
+    v_project_id,
+    'submission',
+    v_label,
+    0,
+    v_submitter_id,
+    p_submission_id,
+    v_workplan,
+    v_narrative,
+    'Auto-captured on submission'
+  ) RETURNING id INTO v_snapshot_id;
+
+  RETURN v_snapshot_id;
+END;
+$$;
+
+-- ==============================================================
+-- 013_accepted_version_snapshot_function.sql
+-- ==============================================================
+-- 013: Postgres function that captures a workplan_snapshot row of type
+-- 'accepted_version' when a CME Admin accepts one or more proposed_changes
+-- in a submission. Called from the submission review API endpoint after
+-- accepted changes have been written to the canonical tables.
+
+CREATE OR REPLACE FUNCTION capture_accepted_version_snapshot(
+  p_project_id    uuid,
+  p_submission_id uuid,
+  p_reviewer_id   uuid,
+  p_label         text DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_snapshot_id uuid;
+  v_label       text;
+  v_workplan    jsonb;
+  v_narrative   jsonb;
+BEGIN
+  SELECT jsonb_build_object(
+    'tasks',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(t))
+          FROM workplan_tasks t
+         WHERE t.project_id = p_project_id
+      ), '[]'::jsonb),
+    'task_resources',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(r))
+          FROM workplan_task_resources r
+          JOIN workplan_tasks t ON t.id = r.task_id
+         WHERE t.project_id = p_project_id
+      ), '[]'::jsonb),
+    'dependencies',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(d))
+          FROM task_dependencies d
+         WHERE d.project_id = p_project_id
+      ), '[]'::jsonb),
+    'deliverables',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(dv))
+          FROM deliverables dv
+         WHERE dv.project_id = p_project_id
+      ), '[]'::jsonb)
+  ) INTO v_workplan;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(ns)), '[]'::jsonb)
+    INTO v_narrative
+  FROM narrative_sections ns
+  WHERE ns.project_id = p_project_id;
+
+  v_label := COALESCE(
+    p_label,
+    'Accepted version · ' || to_char(now() AT TIME ZONE 'UTC', 'Mon DD, YYYY')
+  );
+
+  INSERT INTO workplan_snapshots (
+    project_id, snapshot_type, snapshot_label, version_number,
+    captured_by, submission_id, data, narrative_data, notes
+  ) VALUES (
+    p_project_id,
+    'accepted_version',
+    v_label,
+    0,
+    p_reviewer_id,
+    p_submission_id,
+    v_workplan,
+    v_narrative,
+    'Auto-captured after submission accept'
+  ) RETURNING id INTO v_snapshot_id;
+
+  RETURN v_snapshot_id;
+END;
+$$;
+
+
+-- Manual-snapshot capture function used by the /versions page (CME Admin
+-- "Capture manual snapshot" button). Separate function so we can grant
+-- differently later if needed; for now it also runs as SECURITY DEFINER but
+-- the API route gates it with is_cme_admin().
+CREATE OR REPLACE FUNCTION capture_manual_snapshot(
+  p_project_id uuid,
+  p_label      text
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_snapshot_id uuid;
+  v_workplan    jsonb;
+  v_narrative   jsonb;
+BEGIN
+  SELECT jsonb_build_object(
+    'tasks',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(t))
+          FROM workplan_tasks t
+         WHERE t.project_id = p_project_id
+      ), '[]'::jsonb),
+    'task_resources',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(r))
+          FROM workplan_task_resources r
+          JOIN workplan_tasks t ON t.id = r.task_id
+         WHERE t.project_id = p_project_id
+      ), '[]'::jsonb),
+    'dependencies',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(d))
+          FROM task_dependencies d
+         WHERE d.project_id = p_project_id
+      ), '[]'::jsonb),
+    'deliverables',
+      COALESCE((
+        SELECT jsonb_agg(to_jsonb(dv))
+          FROM deliverables dv
+         WHERE dv.project_id = p_project_id
+      ), '[]'::jsonb)
+  ) INTO v_workplan;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(ns)), '[]'::jsonb)
+    INTO v_narrative
+  FROM narrative_sections ns
+  WHERE ns.project_id = p_project_id;
+
+  INSERT INTO workplan_snapshots (
+    project_id, snapshot_type, snapshot_label, version_number,
+    captured_by, data, narrative_data, notes
+  ) VALUES (
+    p_project_id,
+    'manual',
+    p_label,
+    0,
+    auth.uid(),
+    v_workplan,
+    v_narrative,
+    'Manual snapshot'
+  ) RETURNING id INTO v_snapshot_id;
+
+  RETURN v_snapshot_id;
+END;
+$$;
+
+-- ==============================================================
+-- 014_session6_rls_additions.sql
+-- ==============================================================
+-- 014: Session 6 RLS additions.
+--
+-- These policies ADD capabilities only — they never revoke or narrow existing
+-- policies. Sessions 1–5 functionality continues to work unchanged. Each
+-- addition is justified inline.
+
+-- ---------------------------------------------------------------------------
+-- proposed_changes — owners can delete their OWN drafts
+-- ---------------------------------------------------------------------------
+-- Added so the Drafts tray "Remove" button works for non-admin users.
+-- Existing pc_update_own_draft covers UPDATE of own drafts; pc_admin_write
+-- already allowed admins anything. This gates DELETE on owner + draft status.
+CREATE POLICY pc_delete_own_draft ON proposed_changes FOR DELETE
+  USING (proposed_by = auth.uid() AND status = 'draft');
+
+-- ---------------------------------------------------------------------------
+-- project_members — any project member can read the member list
+-- ---------------------------------------------------------------------------
+-- Comments @mention autocomplete needs to list project members. Existing
+-- pm_select already covers this (is_cme_staff OR is_project_member), so no
+-- change needed.
+
+-- ---------------------------------------------------------------------------
+-- workplan_snapshots — allow any project member to insert MANUAL snapshots
+-- ---------------------------------------------------------------------------
+-- Policy for read was already in place (snapshots_manual_select). The capture
+-- function (capture_manual_snapshot) runs SECURITY DEFINER so RLS doesn't
+-- gate the insert — but we still restrict who can CALL the function via the
+-- API route (is_cme_admin()).
+
+-- ---------------------------------------------------------------------------
+-- comments — allow non-author cme_admin to delete (moderation)
+-- ---------------------------------------------------------------------------
+-- Already covered by comments_delete_own ("author_id = auth.uid() OR is_cme_admin()").
+
+-- ---------------------------------------------------------------------------
+-- documents — loosen to allow all project members to read via DAL, but keep
+-- writes to CME staff only (unchanged).
+
+-- No policy changes needed beyond the proposed_changes delete above.
+
+
+-- ---------------------------------------------------------------------------
+-- audit_log insert — the trigger runs SECURITY DEFINER and bypasses RLS
+-- (no policies needed). We additionally grant INSERT privilege to authenticated
+-- for export-specific audit rows logged directly from API routes.
+-- ---------------------------------------------------------------------------
+CREATE POLICY audit_export_insert ON audit_log FOR INSERT
+  WITH CHECK (
+    action IN (
+      'export.generate',
+      'comment.mention',
+      'document.upload',
+      'document.download',
+      'submission.submit',
+      'submission.review',
+      'snapshot.manual_capture'
+    )
+    AND actor_id = auth.uid()
+  );

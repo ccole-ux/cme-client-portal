@@ -3,19 +3,31 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { LockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+type Lock = {
+  field: string;
+  submittedByName: string | null;
+  submittedByEmail: string | null;
+  submittedAt: string;
+};
 
 export function TaskDatesEditor({
   taskId,
   startDate,
   finishDate,
   mode,
+  startLock,
+  finishLock,
 }: {
   taskId: string;
   startDate: string | null;
   finishDate: string | null;
   mode: "cme_admin" | "read_only";
+  startLock?: Lock | null;
+  finishLock?: Lock | null;
 }) {
   const router = useRouter();
   const [start, setStart] = useState(startDate ?? "");
@@ -24,8 +36,22 @@ export function TaskDatesEditor({
 
   const dirty = start !== (startDate ?? "") || finish !== (finishDate ?? "");
 
+  const anyLock = startLock || finishLock;
+
   async function save(asDraft: boolean) {
     if (!dirty) return;
+    if (anyLock && mode !== "cme_admin") {
+      toast.error(
+        "These dates are currently pending review. Wait for CME Admin to accept or reject before editing.",
+      );
+      return;
+    }
+    if (anyLock && mode === "cme_admin") {
+      const ok = confirm(
+        `A pending submission by ${(anyLock.submittedByName ?? anyLock.submittedByEmail) ?? "another user"} already modifies these dates. Override?`,
+      );
+      if (!ok) return;
+    }
     startTransition(async () => {
       if (asDraft) {
         const res = await fetch("/api/proposed-changes", {
@@ -73,29 +99,43 @@ export function TaskDatesEditor({
     });
   }
 
+  const lockedForViewer = anyLock && mode !== "cme_admin";
+
   return (
     <div className="grid grid-cols-2 gap-3">
       <label className="block">
-        <span className="block text-[11px] tracking-widest uppercase text-muted-foreground mb-1">
+        <span className="flex items-center gap-1 text-[11px] tracking-widest uppercase text-muted-foreground mb-1">
           Start
+          {startLock && (
+            <LockIcon
+              className="h-3 w-3 text-cme-yellow"
+              aria-label="Pending review"
+            />
+          )}
         </span>
         <Input
           type="date"
           value={start}
           onChange={(e) => setStart(e.target.value)}
-          disabled={pending}
+          disabled={pending || Boolean(lockedForViewer)}
           className="font-mono"
         />
       </label>
       <label className="block">
-        <span className="block text-[11px] tracking-widest uppercase text-muted-foreground mb-1">
+        <span className="flex items-center gap-1 text-[11px] tracking-widest uppercase text-muted-foreground mb-1">
           Finish
+          {finishLock && (
+            <LockIcon
+              className="h-3 w-3 text-cme-yellow"
+              aria-label="Pending review"
+            />
+          )}
         </span>
         <Input
           type="date"
           value={finish}
           onChange={(e) => setFinish(e.target.value)}
-          disabled={pending}
+          disabled={pending || Boolean(lockedForViewer)}
           className="font-mono"
         />
       </label>

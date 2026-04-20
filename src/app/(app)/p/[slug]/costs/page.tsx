@@ -5,7 +5,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   getProjectBySlugOrNotFound,
 } from "@/lib/projects/queries";
@@ -15,6 +14,7 @@ import { MonthlyBreakdownTable } from "@/components/costs/MonthlyBreakdownTable"
 import { CumulativeBurn } from "@/components/costs/CumulativeBurn";
 import { ActiveFilterPills } from "@/components/costs/ActiveFilterPills";
 import { ProjectSummaryTiles } from "@/components/costs/ProjectSummaryTiles";
+import { DownloadMenu } from "@/components/export/DownloadMenu";
 
 export const metadata = { title: "Costs — CME Client Portal" };
 
@@ -77,9 +77,7 @@ export default async function CostsPage({
           <div className="text-right text-xs text-muted-foreground">
             {cost.filteredRows.length} task-resource rows in view
           </div>
-          <Button variant="outline" disabled title="Exports land in Session 6">
-            Download (Session 6)
-          </Button>
+          <DownloadMenu slug={slug} scope="canonical" />
         </div>
       </div>
 

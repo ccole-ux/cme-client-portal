@@ -25,6 +25,7 @@ import {
   type TaskStatus,
 } from "@/lib/status";
 import { TaskFilters } from "./TaskFilters";
+import { DownloadMenu } from "@/components/export/DownloadMenu";
 
 export const metadata = { title: "Tasks — CME Client Portal" };
 
@@ -75,13 +76,16 @@ export default async function TasksPage({
 
   return (
     <div className="max-w-7xl px-8 py-6 space-y-6">
-      <div>
-        <p className="font-display tracking-[0.25em] text-cme-bright-green text-xs">
-          WORKPLAN
-        </p>
-        <h2 className="font-display tracking-wider text-cme-dark-green text-xl mt-1">
-          TASKS
-        </h2>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="font-display tracking-[0.25em] text-cme-bright-green text-xs">
+            WORKPLAN
+          </p>
+          <h2 className="font-display tracking-wider text-cme-dark-green text-xl mt-1">
+            TASKS
+          </h2>
+        </div>
+        <DownloadMenu slug={slug} scope="canonical" />
       </div>
 
       <TaskFilters

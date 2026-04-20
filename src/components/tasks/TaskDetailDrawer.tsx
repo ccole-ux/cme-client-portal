@@ -1,8 +1,4 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import { StatusBadge } from "@/components/status/StatusBadge";
 import { formatCurrency, formatCurrencyCents, formatDate } from "@/lib/status";
 import type { Database } from "@/lib/supabase/types";
@@ -11,6 +7,10 @@ import { getTaskAssignmentDetail } from "@/lib/projects/task-detail";
 import { TaskDrawerShell } from "./TaskDrawerShell";
 import { TaskDatesEditor } from "./TaskDatesEditor";
 import { AddPredecessorButton } from "./AddPredecessorButton";
+import { CommentThread } from "@/components/comments/CommentThread";
+import { loadPendingLocksForProject } from "@/lib/drafts/field-state";
+import { createClient } from "@/lib/supabase/server";
+import { LockIcon } from "lucide-react";
 
 type TaskRow = Database["public"]["Tables"]["workplan_tasks"]["Row"];
 
@@ -53,6 +53,17 @@ export async function TaskDetailDrawer({
       ? daysInclusive(task.start_date, task.finish_date)
       : 0;
 
+  // Field-level pending locks for this task.
+  const supabase = await createClient();
+  const locksByEntity = await loadPendingLocksForProject(
+    supabase,
+    task.project_id,
+    "workplan_task",
+  );
+  const taskLocks = locksByEntity.get(task.id) ?? [];
+  const startLock = taskLocks.find((l) => l.field === "start_date") ?? null;
+  const finishLock = taskLocks.find((l) => l.field === "finish_date") ?? null;
+
   return (
     <TaskDrawerShell closeHref={closeHref}>
       <div className="flex items-start justify-between gap-3">
@@ -75,7 +86,23 @@ export async function TaskDetailDrawer({
           startDate={task.start_date}
           finishDate={task.finish_date}
           mode={mode}
+          startLock={startLock}
+          finishLock={finishLock}
         />
+        {(startLock || finishLock) && (
+          <div className="mt-2 flex items-start gap-1.5 text-[11px] text-cme-dark-brown bg-cme-yellow/20 border border-cme-yellow rounded px-2 py-1.5">
+            <LockIcon className="h-3 w-3 mt-0.5 shrink-0" />
+            <span>
+              Pending review — submitted by{" "}
+              {(startLock ?? finishLock)?.submittedByName ?? (startLock ?? finishLock)?.submittedByEmail}{" "}
+              on{" "}
+              {formatDate(
+                ((startLock ?? finishLock)?.submittedAt ?? "").slice(0, 10),
+              )}
+              .
+            </span>
+          </div>
+        )}
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-3">
           <dt className="text-muted-foreground">Duration</dt>
           <dd>{duration} days</dd>
@@ -223,11 +250,11 @@ export async function TaskDetailDrawer({
       </Section>
 
       <Section title="Comments">
-        <Card className="border-dashed">
-          <CardContent className="p-4 text-xs text-muted-foreground">
-            Threaded comments wire up in Session 6.
-          </CardContent>
-        </Card>
+        <CommentThread
+          entityType="workplan_task"
+          entityId={task.id}
+          projectId={task.project_id}
+        />
       </Section>
     </TaskDrawerShell>
   );

@@ -1113,6 +1113,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      capture_accepted_version_snapshot: {
+        Args: {
+          p_project_id: string
+          p_submission_id: string | null
+          p_reviewer_id: string
+          p_label?: string | null
+        }
+        Returns: string
+      }
+      capture_manual_snapshot: {
+        Args: { p_project_id: string; p_label: string }
+        Returns: string
+      }
+      capture_submission_snapshot: {
+        Args: { p_submission_id: string }
+        Returns: string
+      }
       is_cme_admin: { Args: never; Returns: boolean }
       is_cme_staff: { Args: never; Returns: boolean }
       is_cme_viewer: { Args: never; Returns: boolean }

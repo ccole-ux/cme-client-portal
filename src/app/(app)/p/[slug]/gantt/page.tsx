@@ -11,10 +11,16 @@ import {
 import { loadGanttData } from "@/lib/projects/gantt";
 import { getCurrentProfile } from "@/lib/supabase/dal";
 import { formatDate } from "@/lib/status";
+import {
+  loadPendingLocksForProject,
+  lockedFieldKeySet,
+} from "@/lib/drafts/field-state";
+import { createClient } from "@/lib/supabase/server";
 import { GanttView } from "./GanttView";
 import { GanttFilterBar } from "./GanttFilterBar";
 import { MobileTaskList } from "./MobileTaskList";
 import { TaskDetailDrawer } from "@/components/tasks/TaskDetailDrawer";
+import { DownloadMenu } from "@/components/export/DownloadMenu";
 import type {
   GanttTaskInput,
   GanttViewMode,
@@ -39,10 +45,13 @@ export default async function GanttPage({
   const sp = await searchParams;
   const project = await getProjectBySlugOrNotFound(slug);
   const profile = await getCurrentProfile();
-  const [gantt, tasksWithCosts] = await Promise.all([
+  const supabase = await createClient();
+  const [gantt, tasksWithCosts, taskLocks] = await Promise.all([
     loadGanttData(project.id),
     getTasksWithCosts(project.id),
+    loadPendingLocksForProject(supabase, project.id, "workplan_task"),
   ]);
+  const lockedKeys = lockedFieldKeySet(taskLocks);
 
   const depsBySuccessor = new Map<string, string[]>();
   const depsByPredecessor = new Map<string, string[]>();
@@ -177,10 +186,13 @@ export default async function GanttPage({
             GANTT
           </h2>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {formatDate(gantt.projectStart.toISOString())} →{" "}
-          {formatDate(gantt.projectEnd.toISOString())} ·{" "}
-          {criticalCount} tasks on critical path
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-muted-foreground">
+            {formatDate(gantt.projectStart.toISOString())} →{" "}
+            {formatDate(gantt.projectEnd.toISOString())} ·{" "}
+            {criticalCount} tasks on critical path
+          </div>
+          <DownloadMenu slug={slug} scope="canonical" />
         </div>
       </div>
 
@@ -205,6 +217,7 @@ export default async function GanttPage({
           projectStart={gantt.projectStart
             .toISOString()
             .slice(0, 10)}
+          lockedKeys={Array.from(lockedKeys)}
         />
       </div>
       <Card className="md:hidden">

@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   getProjectBySlugOrNotFound,
   getTasksWithCosts,
@@ -14,6 +13,8 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { formatCurrency, formatDate } from "@/lib/status";
 import { TASK_STATUS_LABEL, type TaskStatus } from "@/lib/status";
+import { DownloadMenu } from "@/components/export/DownloadMenu";
+import { CommentThread } from "@/components/comments/CommentThread";
 
 export const metadata = { title: "Overview — CME Client Portal" };
 
@@ -79,9 +80,10 @@ export default async function ProjectOverviewPage({
             STATUS NARRATIVE
           </h2>
         </div>
-        <Button variant="outline" disabled title="Exports land in Session 6">
-          Download…
-        </Button>
+        <div className="flex gap-2">
+          <DownloadMenu slug={slug} scope="narrative" label="Narrative PDF" />
+          <DownloadMenu slug={slug} scope="canonical" />
+        </div>
       </div>
 
       {/* Project metadata */}
@@ -183,6 +185,16 @@ export default async function ProjectOverviewPage({
             </CardHeader>
             <CardContent className="prose prose-sm max-w-none">
               <ReactMarkdown>{n.body_markdown}</ReactMarkdown>
+              <div className="not-prose mt-4 pt-3 border-t">
+                <p className="text-[10px] tracking-widest uppercase text-muted-foreground mb-2">
+                  Comments
+                </p>
+                <CommentThread
+                  entityType="narrative_section"
+                  entityId={n.id}
+                  projectId={project.id}
+                />
+              </div>
             </CardContent>
           </Card>
         ))}

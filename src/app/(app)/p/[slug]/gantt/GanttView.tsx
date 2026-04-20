@@ -16,13 +16,16 @@ export function GanttView({
   slug,
   viewMode,
   projectStart,
+  lockedKeys = [],
 }: {
   tasks: GanttTaskInput[];
   mode: UserMode;
   slug: string;
   viewMode: GanttViewMode;
   projectStart: string;
+  lockedKeys?: string[];
 }) {
+  const lockedSet = new Set(lockedKeys);
   const router = useRouter();
   const search = useSearchParams();
   const [, startTransition] = useTransition();
@@ -40,6 +43,20 @@ export function GanttView({
     newStart: string,
     newFinish: string,
   ) {
+    // Short-circuit if the dates on this task are already pending review.
+    if (
+      lockedSet.has(`${taskId}:start_date`) ||
+      lockedSet.has(`${taskId}:finish_date`)
+    ) {
+      if (mode !== "cme_admin") {
+        toast.error("These dates are pending review. Wait for CME Admin to review before editing.");
+        return;
+      }
+      const ok = confirm(
+        "A pending submission already modifies these dates. Your direct edit will override it. Continue?",
+      );
+      if (!ok) return;
+    }
     if (mode === "cme_admin") {
       const res = await fetch(`/api/workplan-tasks/${taskId}`, {
         method: "PATCH",
