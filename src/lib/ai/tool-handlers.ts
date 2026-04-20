@@ -7,6 +7,9 @@ import {
   computeCostForTaskResource,
   type RateHistoryRow,
 } from "@/lib/rates/compute";
+import { canInvokeTool } from "./permissions";
+
+export { canInvokeTool };
 
 export type ToolExecContext = {
   projectId: string;
@@ -20,24 +23,6 @@ export type ToolResult = {
   data?: unknown;
   error?: string;
 };
-
-/**
- * Caller's role buckets the allowed tool set:
- * - query tools: every authenticated role
- * - propose tools: anyone except actc_viewer (read-only)
- */
-const PROPOSE_TOOL_NAMES = new Set([
-  "propose_task_update",
-  "propose_new_task",
-  "propose_delete_task",
-]);
-
-export function canInvokeTool(role: string, toolName: string): boolean {
-  if (PROPOSE_TOOL_NAMES.has(toolName)) {
-    return role !== "actc_viewer";
-  }
-  return true;
-}
 
 export async function runTool(
   toolName: string,
