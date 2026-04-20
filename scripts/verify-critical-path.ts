@@ -26,7 +26,7 @@ async function main() {
   const [tasksRes, depsRes] = await Promise.all([
     supabase
       .from("workplan_tasks")
-      .select("id, wbs, task_name, start_date, finish_date, is_milestone")
+      .select("id, wbs, task_name, start_date, finish_date, is_milestone, phase")
       .eq("project_id", project.id),
     supabase
       .from("task_dependencies")
@@ -37,8 +37,9 @@ async function main() {
   const tasks = tasksRes.data!;
   const deps = depsRes.data!;
 
+  // Mirror loadGanttData: PM excluded from CPM per PMI level-of-effort convention.
   const nodes: TaskNode[] = tasks
-    .filter((t) => t.start_date && t.finish_date)
+    .filter((t) => t.start_date && t.finish_date && t.phase !== "PM")
     .map((t) => ({
       id: t.id,
       start_date: new Date(t.start_date!),
@@ -48,11 +49,18 @@ async function main() {
         : Math.max(1, inclusiveDays(t.start_date!, t.finish_date!) - 1),
       is_milestone: t.is_milestone,
     }));
-  const edges: DependencyEdge[] = deps.map((d) => ({
-    predecessor_id: d.predecessor_task_id,
-    successor_id: d.successor_task_id,
-    lag_days: d.lag_days,
-  }));
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const edges: DependencyEdge[] = deps
+    .filter(
+      (d) =>
+        nodeIds.has(d.predecessor_task_id) &&
+        nodeIds.has(d.successor_task_id),
+    )
+    .map((d) => ({
+      predecessor_id: d.predecessor_task_id,
+      successor_id: d.successor_task_id,
+      lag_days: d.lag_days,
+    }));
 
   const analysis = computeCriticalPath(nodes, edges);
   const critical = [...analysis.values()].filter((a) => a.is_on_critical_path);

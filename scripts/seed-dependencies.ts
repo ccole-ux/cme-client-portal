@@ -52,6 +52,26 @@ const EDGES: [string, string][] = [
   ["2.11", "M7"],
   // (M7 → 3.1 already seeded above)
   ["3.9", "M8"],
+  // Session 4 polish — intra-phase sequencing so the business chain
+  // spans the full project year through the milestones, rather than
+  // relying on PM tasks' level-of-effort duration.
+  // Phase 1.5
+  ["1.5A.1", "1.5A.2"],
+  ["1.5A.2", "1.5A.3"],
+  // Phase 2 (Tableau 2.8 and docs 2.9 left parallel)
+  ["2.1", "2.3"],
+  ["2.3", "2.4"],
+  ["2.4", "2.5"],
+  ["2.5", "2.6"],
+  ["2.6", "2.7"],
+  ["2.7", "2.10"],
+  ["2.10", "2.11"],
+  // Phase 3 (Tableau 3.4, AI Invoice 3.6, docs 3.7 left parallel)
+  ["3.1", "3.2"],
+  ["3.2", "3.3"],
+  ["3.3", "3.5"],
+  ["3.5", "3.8"],
+  ["3.8", "3.9"],
 ];
 
 async function main() {

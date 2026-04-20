@@ -39,9 +39,15 @@ export async function loadGanttData(projectId: string): Promise<GanttData> {
   const tasks = tasksRes.data ?? [];
   const deps = depsRes.data ?? [];
 
-  // Build input for CPM. Skip tasks without both dates.
+  // PM tasks are excluded from CPM per PMI level-of-effort convention —
+  // they parallel the full project span and don't gate downstream work.
+  // They still render on the Gantt (in the PM swim lane) but force
+  // is_on_critical_path: false in the analysis so the red treatment lands
+  // on real scope-work tasks instead of oversight.
+  const isPmTask = (t: (typeof tasks)[number]) => t.phase === "PM";
+
   const nodes: TaskNode[] = tasks
-    .filter((t) => t.start_date && t.finish_date)
+    .filter((t) => t.start_date && t.finish_date && !isPmTask(t))
     .map((t) => ({
       id: t.id,
       start_date: new Date(t.start_date!),
@@ -52,11 +58,18 @@ export async function loadGanttData(projectId: string): Promise<GanttData> {
       is_milestone: t.is_milestone,
     }));
 
-  const edges: DependencyEdge[] = deps.map((d) => ({
-    predecessor_id: d.predecessor_task_id,
-    successor_id: d.successor_task_id,
-    lag_days: d.lag_days,
-  }));
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const edges: DependencyEdge[] = deps
+    .filter(
+      (d) =>
+        nodeIds.has(d.predecessor_task_id) &&
+        nodeIds.has(d.successor_task_id),
+    )
+    .map((d) => ({
+      predecessor_id: d.predecessor_task_id,
+      successor_id: d.successor_task_id,
+      lag_days: d.lag_days,
+    }));
 
   let analysis: Map<string, ScheduleAnalysis>;
   try {
@@ -65,6 +78,23 @@ export async function loadGanttData(projectId: string): Promise<GanttData> {
     // Cycle — return empty analysis so the page still renders
     console.error("Critical path error:", err);
     analysis = new Map();
+  }
+
+  // Add placeholder entries for PM tasks so the Gantt can still look up
+  // each task's analysis; is_on_critical_path is explicitly false.
+  for (const t of tasks) {
+    if (!isPmTask(t) || !t.start_date || !t.finish_date) continue;
+    const start = new Date(t.start_date);
+    const finish = new Date(t.finish_date);
+    analysis.set(t.id, {
+      task_id: t.id,
+      early_start: start,
+      early_finish: finish,
+      late_start: start,
+      late_finish: finish,
+      total_float_days: 0,
+      is_on_critical_path: false,
+    });
   }
 
   const projectStart =
