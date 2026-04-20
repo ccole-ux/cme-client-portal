@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_conversations: {
@@ -311,11 +286,15 @@ export type Database = {
       deliverables: {
         Row: {
           created_at: string
+          delivery_note: string | null
           description: string | null
           due_date: string | null
           evidence_url: string | null
+          frequency: string | null
           id: string
           notes: string | null
+          owner_initials: string | null
+          phase_tag: string | null
           project_id: string
           ref_code: string
           sort_order: number
@@ -326,11 +305,15 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delivery_note?: string | null
           description?: string | null
           due_date?: string | null
           evidence_url?: string | null
+          frequency?: string | null
           id?: string
           notes?: string | null
+          owner_initials?: string | null
+          phase_tag?: string | null
           project_id: string
           ref_code: string
           sort_order?: number
@@ -341,11 +324,15 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delivery_note?: string | null
           description?: string | null
           due_date?: string | null
           evidence_url?: string | null
+          frequency?: string | null
           id?: string
           notes?: string | null
+          owner_initials?: string | null
+          phase_tag?: string | null
           project_id?: string
           ref_code?: string
           sort_order?: number
@@ -1220,9 +1207,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       ai_message_role: ["user", "assistant", "tool", "system"],

@@ -876,3 +876,16 @@ CREATE TRIGGER trg_handle_new_auth_user
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_auth_user();
 
+-- ==============================================================
+-- 010_deliverables_metadata.sql
+-- ==============================================================
+-- 010: Additional deliverables metadata from rA1 contract sheet.
+-- Columns added to keep contract-level context queryable without overloading
+-- `description` or `notes`. See session 3 kickoff + Chris's seed guidance.
+
+ALTER TABLE deliverables
+  ADD COLUMN IF NOT EXISTS owner_initials text,
+  ADD COLUMN IF NOT EXISTS frequency      text,
+  ADD COLUMN IF NOT EXISTS phase_tag      text,
+  ADD COLUMN IF NOT EXISTS delivery_note  text;
+

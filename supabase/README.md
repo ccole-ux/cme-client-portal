@@ -44,4 +44,5 @@ npx supabase gen types typescript --project-id qodxdzgormqtbqiakhxn > src/lib/su
 | `migrations/007_ops.sql`                     | comments, documents, audit_log, etc.   |
 | `migrations/008_rls.sql`                     | RLS helper fns + policies              |
 | `migrations/009_triggers.sql`                | updated_at, audit, snapshot versioning |
-| `apply-all.sql`                              | Concatenated 001–009 for dashboard use |
+| `migrations/010_deliverables_metadata.sql`   | deliverables owner/freq/phase/delivery |
+| `apply-all.sql`                              | Concatenated 001–010 for dashboard use |
