@@ -22,7 +22,7 @@ export default async function ReviewPage({
 }) {
   const { slug } = await params;
   const profile = await getCurrentProfile();
-  if (profile?.role !== "cme_admin") {
+  if (profile?.role !== "cme_admin" && profile?.role !== "cme_reviewer") {
     redirect(`/p/${slug}`);
   }
 

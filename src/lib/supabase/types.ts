@@ -1130,6 +1130,7 @@ export type Database = {
         Args: { p_submission_id: string }
         Returns: string
       }
+      can_review_submissions: { Args: never; Returns: boolean }
       is_cme_admin: { Args: never; Returns: boolean }
       is_cme_staff: { Args: never; Returns: boolean }
       is_cme_viewer: { Args: never; Returns: boolean }
@@ -1147,6 +1148,7 @@ export type Database = {
         | "deferred"
       project_member_role:
         | "cme_admin"
+        | "cme_reviewer"
         | "cme_viewer"
         | "actc_reviewer"
         | "actc_viewer"
@@ -1174,6 +1176,7 @@ export type Database = {
         | "deferred"
       user_global_role:
         | "cme_admin"
+        | "cme_reviewer"
         | "cme_viewer"
         | "actc_reviewer"
         | "actc_viewer"
@@ -1316,6 +1319,7 @@ export const Constants = {
       ],
       project_member_role: [
         "cme_admin",
+        "cme_reviewer",
         "cme_viewer",
         "actc_reviewer",
         "actc_viewer",
@@ -1347,6 +1351,7 @@ export const Constants = {
       ],
       user_global_role: [
         "cme_admin",
+        "cme_reviewer",
         "cme_viewer",
         "actc_reviewer",
         "actc_viewer",

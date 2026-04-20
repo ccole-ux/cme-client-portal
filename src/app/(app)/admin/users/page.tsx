@@ -18,14 +18,17 @@ import { InviteUserButton } from "./InviteUserButton";
 
 export const metadata = { title: "Users — CME Client Portal" };
 
-function roleBadgeVariant(role: string) {
+function roleBadgeClass(role: string): string {
   switch (role) {
     case "cme_admin":
-      return "default" as const;
+      return "bg-cme-bright-green text-white hover:bg-cme-bright-green/90";
+    case "cme_reviewer":
+      // Teal/blue distinguishes reviewers from admins (green) and viewers (gray).
+      return "bg-[#4B9EC4] text-white hover:bg-[#4B9EC4]/90";
     case "cme_viewer":
-      return "secondary" as const;
+      return "bg-muted text-muted-foreground";
     default:
-      return "outline" as const;
+      return "border bg-transparent text-foreground";
   }
 }
 
@@ -83,7 +86,7 @@ export default async function AdminUsersPage() {
                   </TableCell>
                   <TableCell>{u.firm ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={roleBadgeVariant(u.role)}>
+                    <Badge className={roleBadgeClass(u.role)}>
                       {u.role.replace("_", " ")}
                     </Badge>
                   </TableCell>

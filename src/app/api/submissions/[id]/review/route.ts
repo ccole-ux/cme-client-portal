@@ -29,7 +29,7 @@ export async function POST(
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
-  if (profile?.role !== "cme_admin") {
+  if (profile?.role !== "cme_admin" && profile?.role !== "cme_reviewer") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

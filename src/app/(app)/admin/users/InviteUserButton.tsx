@@ -19,10 +19,32 @@ import { Label } from "@/components/ui/label";
 type Project = { id: string; name: string };
 
 const ROLES = [
-  { value: "cme_admin", label: "CME Admin" },
-  { value: "cme_viewer", label: "CME Viewer" },
-  { value: "actc_reviewer", label: "ACTC Reviewer" },
-  { value: "actc_viewer", label: "ACTC Viewer" },
+  {
+    value: "cme_admin",
+    label: "CME Admin",
+    description: "Full access — manage users, edit canonical data, review submissions.",
+  },
+  {
+    value: "cme_reviewer",
+    label: "CME Reviewer",
+    description:
+      "Can review submissions from ACTC and accept/reject changes. Cannot manage users or directly edit the workplan.",
+  },
+  {
+    value: "cme_viewer",
+    label: "CME Viewer",
+    description: "Read-only access to unpublished drafts and full project data.",
+  },
+  {
+    value: "actc_reviewer",
+    label: "ACTC Reviewer",
+    description: "Can propose drafts and submit them for CME review.",
+  },
+  {
+    value: "actc_viewer",
+    label: "ACTC Viewer",
+    description: "Read-only access to published workplan data.",
+  },
 ] as const;
 
 export function InviteUserButton({ projects }: { projects: Project[] }) {
@@ -112,6 +134,9 @@ export function InviteUserButton({ projects }: { projects: Project[] }) {
                 </option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground">
+              {ROLES.find((r) => r.value === role)?.description}
+            </p>
           </div>
 
           <div className="space-y-2">

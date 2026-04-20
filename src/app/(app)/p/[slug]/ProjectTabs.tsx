@@ -8,17 +8,20 @@ type TabDef = {
   suffix: string;
   label: string;
   badge?: number;
-  cmeOnly?: boolean;
+  reviewerOnly?: boolean;
+  cmeAdminOnly?: boolean;
 };
 
 export function ProjectTabs({
   slug,
   isCmeAdmin,
+  canReview,
   draftsCount,
   pendingReviewCount,
 }: {
   slug: string;
   isCmeAdmin: boolean;
+  canReview: boolean;
   draftsCount: number;
   pendingReviewCount: number;
 }) {
@@ -38,7 +41,7 @@ export function ProjectTabs({
       suffix: "/review",
       label: "Review",
       badge: pendingReviewCount,
-      cmeOnly: true,
+      reviewerOnly: true,
     },
     { suffix: "/versions", label: "Versions" },
     { suffix: "/documents", label: "Documents" },
@@ -49,7 +52,11 @@ export function ProjectTabs({
     <div className="max-w-7xl px-8">
       <nav className="flex gap-1 border-b -mb-px overflow-x-auto">
         {tabs
-          .filter((t) => !t.cmeOnly || isCmeAdmin)
+          .filter((t) => {
+            if (t.reviewerOnly && !canReview) return false;
+            if (t.cmeAdminOnly && !isCmeAdmin) return false;
+            return true;
+          })
           .map((t) => {
             const href = base + t.suffix;
             const active =

@@ -5,7 +5,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const InviteSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["cme_admin", "cme_viewer", "actc_reviewer", "actc_viewer"]),
+  role: z.enum([
+    "cme_admin",
+    "cme_reviewer",
+    "cme_viewer",
+    "actc_reviewer",
+    "actc_viewer",
+  ]),
   project_id: z.string().uuid().nullable().optional(),
 });
 

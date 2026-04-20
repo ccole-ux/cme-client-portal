@@ -40,18 +40,19 @@ As of April 19, 2026 (pre-kickoff), every workplan line is `Not Started`. The Cl
 
 ## 3. Users and roles
 
-Four roles, enforced via Supabase Row-Level Security (RLS).
+Five roles, enforced via Supabase Row-Level Security (RLS).
 
 | Role | Read project | Comment | Direct-edit | Propose | Approve/reject | See all submissions | Invite | Admin |
 |------|--------------|---------|-------------|---------|----------------|---------------------|--------|-------|
 | **CME Admin** | All | ✓ | ✓ (logged) | via direct-edit | ✓ | ✓ | ✓ | ✓ |
+| **CME Reviewer** | All | ✓ | — | ✓ | ✓ | ✓ | — | — |
 | **CME Viewer** | All | ✓ | — | ✓ | — | ✓ | — | — |
 | **ACTC Reviewer** | Their project(s) | ✓ | — | ✓ | — | Only own | — | — |
 | **ACTC Viewer** | Their project(s) | ✓ | — | — | — | Only own | — | — |
 
 Submission visibility rule: **A submission is visible to its submitter plus all CME staff. Other users in the project do not see others' submissions.**
 
-Direct-edit actions by CME Admin create audit_log entries but bypass the proposal/submission workflow.
+Direct-edit actions by CME Admin create audit_log entries but bypass the proposal/submission workflow. CME Reviewers get the accept/reject workflow without the direct-edit or user-management powers of an admin — useful for delegating review without giving away canonical-write access.
 
 ---
 

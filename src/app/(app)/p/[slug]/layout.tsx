@@ -20,10 +20,12 @@ export default async function ProjectLayout({
   const profile = await getCurrentProfile();
   const user = await getSessionUser();
   const isCmeAdmin = profile?.role === "cme_admin";
+  const canReview =
+    profile?.role === "cme_admin" || profile?.role === "cme_reviewer";
 
   const [draftsCount, pendingReviewCount] = await Promise.all([
     user ? countDraftsForUser(project.id, user.id) : Promise.resolve(0),
-    isCmeAdmin
+    canReview
       ? countPendingSubmissionsForProject(project.id)
       : Promise.resolve(0),
   ]);
@@ -52,6 +54,7 @@ export default async function ProjectLayout({
         <ProjectTabs
           slug={slug}
           isCmeAdmin={isCmeAdmin}
+          canReview={canReview}
           draftsCount={draftsCount}
           pendingReviewCount={pendingReviewCount}
         />
