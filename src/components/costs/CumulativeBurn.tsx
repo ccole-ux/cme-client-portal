@@ -37,10 +37,14 @@ export function CumulativeBurn({
   points,
   milestones,
   todayISO,
+  forecastMax,
 }: {
   points: BurnPoint[];
   milestones: MilestoneMarker[];
   todayISO: string;
+  /** Final escalated forecast value — anchors y-axis max so the curve
+   *  reaches the top of the chart area rather than rounding off. */
+  forecastMax?: { hours: number; cost: number };
 }) {
   const [metric, setMetric] = useState<Metric>("cost");
 
@@ -80,10 +84,11 @@ export function CumulativeBurn({
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="font-display tracking-wide text-sm">
-              CUMULATIVE BURN
+              CUMULATIVE BURN · FORECAST (WITH ESCALATION)
             </CardTitle>
             <CardDescription className="text-xs">
-              Baseline planned spend. Forecast overlay added when drafts are
+              Cumulative forecast spend with the 3% Jan 1 2027 rate
+              escalation applied. Actuals overlay added when drafts are
               submitted (Session 6).
             </CardDescription>
           </div>
@@ -121,6 +126,12 @@ export function CumulativeBurn({
                 tick={{ fontSize: 11 }}
                 tickFormatter={formatY}
                 width={55}
+                domain={
+                  forecastMax
+                    ? [0, metric === "cost" ? forecastMax.cost : forecastMax.hours]
+                    : [0, "dataMax"]
+                }
+                allowDataOverflow={false}
               />
               <Tooltip
                 content={({ active, payload }) => {

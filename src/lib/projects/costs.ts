@@ -15,6 +15,7 @@ import {
   buildMonthlyBreakdown,
   computeBaselineBurn,
 } from "@/lib/costs/aggregate";
+import { buildCostSummary, type CostSummary } from "@/lib/costs/summary";
 import type { MilestoneMarker } from "@/components/costs/CumulativeBurn";
 
 export type CostFilterInput = {
@@ -44,6 +45,7 @@ export async function loadCostData(
   resourceOrder: { id: string; name: string }[];
   resourceNameById: Record<string, string>;
   allRowsTotalCost: number;
+  summary: CostSummary;
 }> {
   const supabase = await createClient();
 
@@ -183,10 +185,8 @@ export async function loadCostData(
     });
   }
 
-  const allRowsTotalCost = aggregateByFirm(allRows, rates).reduce(
-    (s, a) => s + a.cost,
-    0,
-  );
+  const summary = buildCostSummary(allRows, rates);
+  const allRowsTotalCost = summary.forecast_escalated;
 
   return {
     filteredRows,
@@ -203,6 +203,7 @@ export async function loadCostData(
     resourceOrder,
     resourceNameById,
     allRowsTotalCost,
+    summary,
   };
 }
 

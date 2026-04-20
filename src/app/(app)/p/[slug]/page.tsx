@@ -47,6 +47,12 @@ export default async function ProjectOverviewPage({
   const accepted = statusCount["accepted"] ?? 0;
   const statusCountNum = Object.keys(statusCount).length;
 
+  // Escalated forecast for the "with 2027 escalation" note below Baseline Cost.
+  const forecastEscalated = tasksWithCosts.reduce(
+    (s, t) => s + t.total_cost,
+    0,
+  );
+
   // Phase summary (exclude milestones from phase rollups to keep hours aligned)
   const phaseTotals = new Map<string, { hours: number; tasks: number }>();
   for (const t of tasksWithCosts) {
@@ -105,6 +111,15 @@ export default async function ProjectOverviewPage({
             }
           />
         </CardContent>
+        {forecastEscalated > 0 && (
+          <CardContent className="pt-0 -mt-2 text-xs text-muted-foreground">
+            With 2027 rate escalation applied:{" "}
+            <span className="font-medium text-cme-dark-green">
+              {formatCurrency(forecastEscalated)}
+            </span>
+            .
+          </CardContent>
+        )}
       </Card>
 
       {/* Status summary */}

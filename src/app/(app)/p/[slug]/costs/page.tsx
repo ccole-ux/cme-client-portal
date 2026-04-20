@@ -10,11 +10,11 @@ import {
   getProjectBySlugOrNotFound,
 } from "@/lib/projects/queries";
 import { loadCostData } from "@/lib/projects/costs";
-import { formatCurrency } from "@/lib/status";
 import { CrossFilterBars } from "@/components/costs/CrossFilterBars";
 import { MonthlyBreakdownTable } from "@/components/costs/MonthlyBreakdownTable";
 import { CumulativeBurn } from "@/components/costs/CumulativeBurn";
 import { ActiveFilterPills } from "@/components/costs/ActiveFilterPills";
+import { ProjectSummaryTiles } from "@/components/costs/ProjectSummaryTiles";
 
 export const metadata = { title: "Costs — CME Client Portal" };
 
@@ -75,17 +75,15 @@ export default async function CostsPage({
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right text-xs text-muted-foreground">
-            Baseline{" "}
-            <span className="font-semibold text-cme-dark-green">
-              {formatCurrency(cost.allRowsTotalCost)}
-            </span>{" "}
-            · {cost.filteredRows.length} task-resource rows
+            {cost.filteredRows.length} task-resource rows in view
           </div>
           <Button variant="outline" disabled title="Exports land in Session 6">
             Download (Session 6)
           </Button>
         </div>
       </div>
+
+      <ProjectSummaryTiles summary={cost.summary} />
 
       <ActiveFilterPills resourceNameById={cost.resourceNameById} />
 
@@ -107,6 +105,10 @@ export default async function CostsPage({
         points={cost.burn}
         milestones={cost.milestones}
         todayISO={todayISO}
+        forecastMax={{
+          hours: cost.summary.total_hours,
+          cost: cost.summary.forecast_escalated,
+        }}
       />
 
       {cost.filteredRows.length === 0 && (
