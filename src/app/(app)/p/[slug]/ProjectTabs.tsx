@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { suffix: "", label: "Overview" },
   { suffix: "/tasks", label: "Tasks" },
+  { suffix: "/gantt", label: "Gantt" },
   { suffix: "/resources", label: "Resources" },
   { suffix: "/milestones", label: "Milestones" },
 ];

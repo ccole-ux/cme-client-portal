@@ -796,6 +796,84 @@ export type Database = {
         }
         Relationships: []
       }
+      task_dependencies: {
+        Row: {
+          created_at: string
+          created_by: string
+          dependency_type: string
+          id: string
+          lag_days: number
+          notes: string | null
+          predecessor_task_id: string
+          project_id: string
+          successor_task_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          dependency_type?: string
+          id?: string
+          lag_days?: number
+          notes?: string | null
+          predecessor_task_id: string
+          project_id: string
+          successor_task_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          dependency_type?: string
+          id?: string
+          lag_days?: number
+          notes?: string | null
+          predecessor_task_id?: string
+          project_id?: string
+          successor_task_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_dependencies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_predecessor_task_id_fkey"
+            columns: ["predecessor_task_id"]
+            isOneToOne: false
+            referencedRelation: "workplan_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_successor_task_id_fkey"
+            columns: ["successor_task_id"]
+            isOneToOne: false
+            referencedRelation: "workplan_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           avatar_url: string | null

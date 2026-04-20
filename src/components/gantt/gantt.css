@@ -1,0 +1,71 @@
+/* frappe-gantt overrides + CME-branded accents.
+ * Loaded after the library stylesheet so these rules win.
+ */
+
+.cme-gantt {
+  /* frappe-gantt CSS variables */
+  --g-bg-color: #ffffff;
+  --g-border-color: rgba(36, 83, 46, 0.12);
+  --g-row-color-alt: rgba(60, 157, 72, 0.04);
+  --g-weekend-highlight-color: rgba(199, 200, 202, 0.25);
+  --g-today-highlight: rgba(255, 203, 14, 0.6);
+  --g-tick-color: rgba(36, 83, 46, 0.08);
+
+  /* Task bar base fill — CME bright green */
+  --g-bar-color: #3C9D48;
+  --g-bar-label-color: #ffffff;
+  --g-progress-color: rgba(255, 255, 255, 0.15);
+
+  /* Arrow color between dependencies — subtle gray */
+  --g-arrow-color: rgba(0, 0, 0, 0.45);
+
+  font-family: var(--font-body), sans-serif;
+}
+
+/* Critical path tasks render red */
+.cme-gantt .bar-wrapper.is-critical .bar {
+  fill: #E85F46 !important;
+}
+
+.cme-gantt .bar-wrapper.is-critical .bar-progress {
+  fill: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Milestone diamonds — CME dark green outline with yellow fill on critical */
+.cme-gantt .bar-wrapper[data-is-milestone="true"] .bar {
+  fill: #25532E;
+}
+
+.cme-gantt .bar-wrapper.is-critical[data-is-milestone="true"] .bar {
+  fill: #E85F46 !important;
+}
+
+/* Phase swim-lane tints (applied via custom_class) */
+.cme-gantt .bar-wrapper.phase-1 .bar { fill: #3C9D48; }
+.cme-gantt .bar-wrapper.phase-1-5 .bar { fill: #4FB65B; }
+.cme-gantt .bar-wrapper.phase-2 .bar { fill: #4B5F9E; }
+.cme-gantt .bar-wrapper.phase-3 .bar { fill: #9E3B58; }
+.cme-gantt .bar-wrapper.phase-pm .bar { fill: #52361C; }
+
+/* Critical overrides phase color */
+.cme-gantt .bar-wrapper.is-critical.phase-1 .bar,
+.cme-gantt .bar-wrapper.is-critical.phase-1-5 .bar,
+.cme-gantt .bar-wrapper.is-critical.phase-2 .bar,
+.cme-gantt .bar-wrapper.is-critical.phase-3 .bar,
+.cme-gantt .bar-wrapper.is-critical.phase-pm .bar {
+  fill: #E85F46 !important;
+}
+
+/* Upper/lower header */
+.cme-gantt .upper-text,
+.cme-gantt .lower-text {
+  fill: #25532E;
+  font-weight: 500;
+}
+
+/* Subtle row stripes by phase (applied via data attribute on the row grid) */
+.cme-gantt .grid-row[data-phase="1"] { fill: rgba(60, 157, 72, 0.03); }
+.cme-gantt .grid-row[data-phase="1-5"] { fill: rgba(79, 182, 91, 0.04); }
+.cme-gantt .grid-row[data-phase="2"] { fill: rgba(75, 95, 158, 0.04); }
+.cme-gantt .grid-row[data-phase="3"] { fill: rgba(158, 59, 88, 0.04); }
+.cme-gantt .grid-row[data-phase="PM"] { fill: rgba(82, 54, 28, 0.04); }
