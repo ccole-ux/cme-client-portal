@@ -63,6 +63,15 @@ export function CumulativeBurn({
     t: new Date(m.date).getTime(),
   }));
 
+  // Hide the Today line when it falls outside the data domain. Before project
+  // kickoff the line would otherwise overlap the first data point and look
+  // like a rendering glitch. Once work starts, recharts will paint it inside
+  // the axis and the label sits in the upper-right corner as expected.
+  const todayTs = new Date(todayISO).getTime();
+  const minTs = data.length ? data[0].t : todayTs;
+  const maxTs = data.length ? data[data.length - 1].t : todayTs;
+  const showToday = todayTs >= minTs && todayTs <= maxTs;
+
   function formatY(v: number) {
     if (metric === "cost") {
       if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
@@ -178,19 +187,20 @@ export function CumulativeBurn({
                 shape="diamond"
                 isAnimationActive={false}
               />
-              <ReferenceLine
-                x={new Date(todayISO).getTime()}
-                stroke="#FFCB0E"
-                strokeDasharray="4 4"
-                strokeWidth={2}
-                ifOverflow="extendDomain"
-                label={{
-                  value: "Today",
-                  fill: "#25532E",
-                  fontSize: 10,
-                  position: "insideTopRight",
-                }}
-              />
+              {showToday && (
+                <ReferenceLine
+                  x={todayTs}
+                  stroke="#FFCB0E"
+                  strokeDasharray="4 4"
+                  strokeWidth={2}
+                  label={{
+                    value: "Today",
+                    fill: "#25532E",
+                    fontSize: 10,
+                    position: "insideTopRight",
+                  }}
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </div>

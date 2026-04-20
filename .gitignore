@@ -41,7 +41,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-
 # supabase cli local state (linked project info, pooler url, etc.)
 supabase/.temp/
