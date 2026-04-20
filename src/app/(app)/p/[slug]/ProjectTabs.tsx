@@ -8,6 +8,7 @@ const TABS = [
   { suffix: "", label: "Overview" },
   { suffix: "/tasks", label: "Tasks" },
   { suffix: "/gantt", label: "Gantt" },
+  { suffix: "/costs", label: "Costs" },
   { suffix: "/resources", label: "Resources" },
   { suffix: "/milestones", label: "Milestones" },
 ];
