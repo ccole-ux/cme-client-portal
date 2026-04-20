@@ -7,6 +7,7 @@ import {
 import { getCurrentProfile, getSessionUser } from "@/lib/supabase/dal";
 import { ProjectTabs } from "./ProjectTabs";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { AssistantSidebar } from "@/components/ai/AssistantSidebar";
 
 export default async function ProjectLayout({
   children,
@@ -60,6 +61,11 @@ export default async function ProjectLayout({
         />
       </header>
       <main className="flex-1 bg-background">{children}</main>
+      <AssistantSidebar
+        projectId={project.id}
+        slug={slug}
+        apiConfigured={Boolean(process.env.ANTHROPIC_API_KEY)}
+      />
     </div>
   );
 }
