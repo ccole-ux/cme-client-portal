@@ -16,7 +16,7 @@ process.loadEnvFile(".env.local");
 
 const WORKPLAN_PATH = resolve("docs/ACTC_PCS_Workplan_v8.xlsx");
 const NARRATIVE_PATH = resolve("docs/PCS_Status_Narrative.md");
-const PROJECT_SLUG = "actc-pcs";
+const PROJECT_SLUG = "a26-0057";
 const CME_ADMIN_EMAIL = "ccole@cole-mgtandeng.com";
 
 const supabase = createClient<Database>(
@@ -197,12 +197,12 @@ async function phaseC(): Promise<string> {
   }
 
   const description =
-    "Alameda CTC PCS SaaS Replacement. 4,912 hours / $1,356,256 across four phases (May 2026 – Apr 2027) to replace the legacy Project Controls System with a Supabase-backed SaaS platform covering Programming, Projects, Contracts, Invoices, Funding, AI-assisted workflows, and Tableau reporting.";
+    "Master workplan for Agreement A26-0057 with Alameda County Transportation Commission. Rates per B7 R26-003. Covers Phase 1 Core MVP, Phase 1.5 AI Data Access, Phase 2 Extended Modules, Phase 3 Optimization, and Project Management across May 2026 through April 2027.";
 
   const { data, error } = await supabase
     .from("projects")
     .insert({
-      name: "PCS SaaS Replacement",
+      name: "A26-0057",
       client_name: "Alameda County Transportation Commission",
       client_short: "Alameda CTC",
       slug: PROJECT_SLUG,

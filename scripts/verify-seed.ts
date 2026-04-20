@@ -36,7 +36,7 @@ async function main() {
   const { data: project } = await supabase
     .from("projects")
     .select("id, slug, total_hours_baseline, total_cost_baseline")
-    .eq("slug", "actc-pcs")
+    .eq("slug", "a26-0057")
     .single();
   if (!project) throw new Error("no project");
 

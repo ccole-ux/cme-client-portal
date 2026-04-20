@@ -33,14 +33,19 @@ export default async function ProjectOverviewPage({
     .eq("is_published", true)
     .order("sort_order");
 
-  // Status summary
+  // Status summary — count tasks and milestones separately for clarity.
   const statusCount: Partial<Record<TaskStatus, number>> = {};
+  let taskTotal = 0;
+  let milestoneTotal = 0;
   for (const t of tasksWithCosts) {
     statusCount[t.task.status] = (statusCount[t.task.status] ?? 0) + 1;
+    if (t.task.is_milestone) milestoneTotal += 1;
+    else taskTotal += 1;
   }
   const notStarted = statusCount["not_started"] ?? 0;
   const inDev = statusCount["in_development"] ?? 0;
   const accepted = statusCount["accepted"] ?? 0;
+  const statusCountNum = Object.keys(statusCount).length;
 
   // Phase summary (exclude milestones from phase rollups to keep hours aligned)
   const phaseTotals = new Map<string, { hours: number; tasks: number }>();
@@ -109,8 +114,9 @@ export default async function ProjectOverviewPage({
             STATUS SUMMARY
           </CardTitle>
           <CardDescription>
-            {tasksWithCosts.length} tasks across{" "}
-            {Object.keys(statusCount).length} statuses
+            {taskTotal} tasks + {milestoneTotal} milestones across{" "}
+            {statusCountNum}{" "}
+            {statusCountNum === 1 ? "status" : "statuses"}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-6 text-sm">
